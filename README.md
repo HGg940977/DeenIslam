@@ -1,4 +1,4 @@
-# 🌙 DeenIslam (দ্বীন ইসলাম)
+# 🌙 MISHKAT (দ্বীন ইসলাম)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Language: Bengali](https://img.shields.io/badge/Language-Bengali-green.svg)](#)
@@ -7,7 +7,7 @@
 [![PWA Ready](https://img.shields.io/badge/PWA-Offline%20Ready-emerald.svg)](#)
 [![Android APK v1.0](https://img.shields.io/badge/Android%20APK-v1.0%20Download-047857.svg)](https://github.com/mehedishakeel/DeenIslam/releases/download/v1.0/DeenIslam-v1.0.apk)
 
-**DeenIslam** is an ad-free, privacy-first Islamic web portal and native Android application (`mobile/`) providing authentic Islamic resources in Bengali.
+**MISHKAT** is an ad-free, privacy-first Islamic web portal and native Android application (`mobile/`) providing authentic Islamic resources in Bengali.
 
 - **Live Website:** [https://deenislam.org/](https://deenislam.org/)
 - **Android App (APK v1.0):** [Download DeenIslam-v1.0.apk](https://github.com/mehedishakeel/DeenIslam/releases/download/v1.0/DeenIslam-v1.0.apk)

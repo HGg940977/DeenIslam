@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "দ্বীন ইসলাম",
+                  "MISHKAT",
                   style: GoogleFonts.hindSiliguri(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
