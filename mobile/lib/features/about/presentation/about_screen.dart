@@ -229,6 +229,18 @@ class AboutScreen extends StatelessWidget {
               ),
             );
           }),
+          const SizedBox(height: 8),
+          Center(
+            child: Text(
+              'Created by Miskat Llc',
+              style: GoogleFonts.hindSiliguri(
+                fontSize: 12,
+                color: isDark
+                    ? AppColors.textSecondaryDark
+                    : AppColors.textSecondaryLight,
+              ),
+            ),
+          ),
         ],
       ),
     );
