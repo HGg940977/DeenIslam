@@ -902,7 +902,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <div class="pt-1">
                             <span class="text-xs text-slate-400 dark:text-slate-500 font-medium">অফিশিয়াল ওয়েবসাইট: </span>
-                            <a href="${basePath}index.html" class="text-xs font-bold text-primary dark:text-emerald-400 hover:underline">deenislam.org</a>
+                            <a href="${basePath}index.html" class="text-xs font-bold text-primary dark:text-emerald-400 hover:underline">MISHKAT</a>
                         </div>
                     </div>
 
@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <!-- Col 4: Community & Support (2 cols on lg) -->
                     <div class="lg:col-span-2">
                         <h3 class="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4">যুক্ত হোন</h3>
-                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 font-mono">contact@deenislam.org</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 font-mono">ahmedshariarhossaintasnim@gmail.com</p>
                         
                         <div class="space-y-2.5">
                             <a href="${basePath}community.html" class="block text-center py-2 px-3 rounded-xl bg-stone-100/90 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-primary dark:hover:text-primary text-xs font-semibold transition-all border border-stone-200 dark:border-slate-700">

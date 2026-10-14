@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.mehedishakeel.deenislam">
+    package="com.miskat.app">
 
     <!-- Permissions for Prayer Alarms, Qibla Compass, Audio Streaming, and Tasbih -->
     <uses-permission android:name="android.permission.INTERNET"/>

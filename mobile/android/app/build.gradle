@@ -11,7 +11,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.mehedishakeel.deenislam"
+    namespace = "com.miskat.app"
     compileSdk = 34
     ndkVersion = "25.1.8937393"
 
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.mehedishakeel.deenislam"
+        applicationId = "com.miskat.app"
         minSdk = 21
         targetSdk = 34
         versionCode = flutter.versionCode

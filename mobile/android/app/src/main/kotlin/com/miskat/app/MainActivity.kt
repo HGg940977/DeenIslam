@@ -1,4 +1,4 @@
-package com.mehedishakeel.deenislam
+package com.miskat.app
 
 import android.content.Context
 import android.hardware.Sensor

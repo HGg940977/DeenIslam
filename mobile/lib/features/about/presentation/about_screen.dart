@@ -232,7 +232,8 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Created by Miskat LLC',
+              'Created by Ahmed Shariar Hossain Tasnim\nahmedshariarhossaintasnim@gmail.com\nBased on the open-source DeenIslam project by Mehedi Shakeel',
+              textAlign: TextAlign.center,
               style: GoogleFonts.hindSiliguri(
                 fontSize: 12,
                 color: isDark

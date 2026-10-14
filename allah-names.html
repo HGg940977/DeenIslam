@@ -283,7 +283,7 @@
     function copyName(id) {
       const name = allahNames.find(n => n.id === id);
       if (!name) return;
-      const text = `${name.arabic} (${name.transliteration})\nঅর্থ: ${name.meaning}\nতাৎপর্য: ${name.desc}\n(MISHKAT - deenislam.org)`;
+      const text = `${name.arabic} (${name.transliteration})\nঅর্থ: ${name.meaning}\nতাৎপর্য: ${name.desc}\n(MISHKAT)`;
       window.copyToClipboard(text);
     }
 

@@ -495,7 +495,7 @@
     function copyDua(id) {
       const dua = duasData.find(d => d.id === id);
       if (!dua) return;
-      const textToCopy = `${dua.title}\n\n${dua.arabic}\n\nউচ্চারণ: ${dua.transliteration}\n\nঅর্থ: ${dua.translation}\n\nরেফারেন্স: ${dua.reference}\n(MISHKAT - deenislam.org)`;
+      const textToCopy = `${dua.title}\n\n${dua.arabic}\n\nউচ্চারণ: ${dua.transliteration}\n\nঅর্থ: ${dua.translation}\n\nরেফারেন্স: ${dua.reference}\n(MISHKAT)`;
       window.copyToClipboard(textToCopy);
     }
 
