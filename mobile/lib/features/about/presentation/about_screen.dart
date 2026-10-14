@@ -150,7 +150,7 @@ class AboutScreen extends StatelessWidget {
                       Clipboard.setData(
                         const ClipboardData(
                           text:
-                              'MISHKAT — কুরআন, সহীহ হাদিস, নামাজের সময়সূচি ও দোয়ার বিজ্ঞাপনমুক্ত ইসলামিক অ্যাপ: https://github.com/mehedishakeel/DeenIslam/releases',
+                              'MISHKAT — কুরআন, সহীহ হাদিস, নামাজের সময়সূচি ও দোয়ার বিজ্ঞাপনমুক্ত ইসলামিক অ্যাপ: https://github.com/HGg940977/DeenIslam/releases',
                         ),
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -232,7 +232,7 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Created by Miskat Llc',
+              'Created by Miskat LLC',
               style: GoogleFonts.hindSiliguri(
                 fontSize: 12,
                 color: isDark

@@ -585,7 +585,7 @@ window.initCommandPalette = (basePath) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DeenIslam Components Loaded - v2.0.0');
+    console.log('MISHKAT Components Loaded - v2.0.0');
 
     // Global UI Styles & Waveform Animations
     if (!document.getElementById('deen-global-ui-style')) {
@@ -954,7 +954,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <!-- Bottom Bar -->
                 <div class="pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 dark:text-slate-400 gap-4">
                     <div class="flex items-center space-x-2">
-                        <span>© 2026 DeenIslam.org</span>
+                        <span>© 2026 MISHKAT</span>
                         <span>•</span>
                         <span>শুদ্ধ দ্বীনি জ্ঞানের উন্মুক্ত ভাণ্ডার</span>
                     </div>

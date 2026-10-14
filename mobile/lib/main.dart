@@ -54,7 +54,7 @@ class _DeenIslamAppState extends State<DeenIslamApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'দ্বীন ইসলাম - MISHKAT',
+      title: 'MISHKAT',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
