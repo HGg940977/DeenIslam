@@ -338,12 +338,15 @@ class _PrayerScreenState extends State<PrayerScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
+                  Expanded(
+                    child: Row(
                     children: [
                       const Icon(Icons.location_on, color: AppColors.emerald, size: 18),
                       const SizedBox(width: 8),
-                      DropdownButtonHideUnderline(
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
+                          isExpanded: true,
                           value: _selectedCity,
                           items: _cities.map((city) {
                             return DropdownMenuItem(
@@ -364,8 +367,11 @@ class _PrayerScreenState extends State<PrayerScreen> {
                           },
                         ),
                       ),
+                      ),
                     ],
                   ),
+                  ),
+                  const SizedBox(width: 8),
                   InkWell(
                     onTap: () => _showAzanSettingsSheet(isDark),
                     borderRadius: BorderRadius.circular(8),

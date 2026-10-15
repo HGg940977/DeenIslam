@@ -232,7 +232,7 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Center(
             child: Text(
-              'Created by Ahmed Shariar Hossain Tasnim\nahmedshariarhossaintasnim@gmail.com\nBased on the open-source DeenIslam project by Mehedi Shakeel',
+              'Created by Ahmed Shariar Hossain Tasnim\nahmedshariarhossaintasnim@gmail.com',
               textAlign: TextAlign.center,
               style: GoogleFonts.hindSiliguri(
                 fontSize: 12,

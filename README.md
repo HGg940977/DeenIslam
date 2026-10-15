@@ -111,3 +111,6 @@ python3 -m http.server 8000
 
 Distributed under the MIT License.
 
+## Acknowledgements
+
+This project began as a fork of the open-source DeenIslam project by Mehedi Shakeel (https://github.com/mehedishakeel/DeenIslam). The original repository did not include a license file at the time of forking; the original author retains credit for the upstream work.
