@@ -28,3 +28,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/data/
+
+# geolocator_android >=4.6.2 needs a newer Flutter Gradle plugin than 3.24.3.
+dependency_overrides:
+  geolocator_android: 4.6.1
