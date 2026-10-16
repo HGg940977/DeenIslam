@@ -307,7 +307,16 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  Text(
+                    'ওয়াক্ত হলে ফোনের ডিফল্ট নোটিফিকেশন শব্দে রিমাইন্ডার আসবে। সম্পূর্ণ আজান ব্যাকগ্রাউন্ডে বাজে না। নিচের বাটনটি ইন্টারনেট থেকে আজানের নমুনা শোনায় (নেট প্রয়োজন)। মুয়াজ্জিন নির্বাচন শুধু এই নমুনার জন্য।',
+                    style: GoogleFonts.hindSiliguri(
+                      fontSize: 11.5,
+                      height: 1.5,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: () {
                       HapticFeedback.mediumImpact();
@@ -342,7 +351,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
                     ),
                     icon: const Icon(Icons.notifications_active_outlined, size: 18),
                     label: Text(
-                      'আজান অ্যালার্ম টেস্ট করুন',
+                      'আজানের নমুনা শুনুন',
                       style: GoogleFonts.hindSiliguri(
                         fontSize: 13.5,
                         fontWeight: FontWeight.bold,
