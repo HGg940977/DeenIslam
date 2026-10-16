@@ -195,6 +195,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   void _showAzanSettingsSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: isDark ? AppColors.cardDark : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -202,7 +203,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -277,37 +278,85 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [10, 15, 30].map((mins) {
                       final isSelected = _preReminderMinutes == mins;
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(
-                              '${BengaliNumerals.convert(mins)} মিনিট আগে',
-                              style: GoogleFonts.hindSiliguri(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected
-                                    ? Colors.white
-                                    : (isDark ? Colors.white70 : AppColors.textPrimaryLight),
-                              ),
-                            ),
-                            selected: isSelected,
-                            selectedColor: AppColors.emerald,
-                            onSelected: (_) async {
-                              await StorageService.setAzanPreReminderMinutes(mins);
-                              setModalState(() => _preReminderMinutes = mins);
-                              setState(() => _preReminderMinutes = mins);
-                              await _reschedule();
-                            },
+                      return ChoiceChip(
+                        showCheckmark: false,
+                        avatar: isSelected
+                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            : null,
+                        label: Text(
+                          '${BengaliNumerals.convert(mins)} মিনিট আগে',
+                          softWrap: false,
+                          style: GoogleFonts.hindSiliguri(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : AppColors.textPrimaryLight),
                           ),
                         ),
+                        selected: isSelected,
+                        selectedColor: AppColors.emerald,
+                        onSelected: (_) async {
+                          await StorageService.setAzanPreReminderMinutes(mins);
+                          setModalState(() => _preReminderMinutes = mins);
+                          setState(() => _preReminderMinutes = mins);
+                          await _reschedule();
+                        },
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 12),
+                  FutureBuilder<List<bool>>(
+                    future: Future.wait([
+                      ReminderService.instance.notificationsAllowed(),
+                      ReminderService.instance.canScheduleExact(),
+                    ]),
+                    builder: (context, snap) {
+                      if (!snap.hasData) return const SizedBox.shrink();
+                      final notif = snap.data![0];
+                      final exact = snap.data![1];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            notif
+                                ? '✔ নোটিফিকেশনের অনুমতি আছে'
+                                : '✖ নোটিফিকেশনের অনুমতি নেই — রিমাইন্ডার আসবে না',
+                            style: GoogleFonts.hindSiliguri(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: notif ? AppColors.emerald : Colors.red.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            exact
+                                ? '✔ সঠিক সময়ের অ্যালার্ম চালু আছে'
+                                : '• সঠিক সময়ের অ্যালার্মের অনুমতি নেই — রিমাইন্ডার কয়েক মিনিট দেরিতে আসতে পারে',
+                            style: GoogleFonts.hindSiliguri(fontSize: 12, height: 1.4),
+                          ),
+                          if (!exact)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton(
+                                onPressed: () async {
+                                  await ReminderService.instance.requestExactAlarmPermission();
+                                  setModalState(() {});
+                                },
+                                child: Text('অনুমতির সেটিংস খুলুন',
+                                    style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.bold)),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
                   Text(
                     'ওয়াক্ত হলে ফোনের ডিফল্ট নোটিফিকেশন শব্দে রিমাইন্ডার আসবে। সম্পূর্ণ আজান ব্যাকগ্রাউন্ডে বাজে না। নিচের বাটনটি ইন্টারনেট থেকে আজানের নমুনা শোনায় (নেট প্রয়োজন)। মুয়াজ্জিন নির্বাচন শুধু এই নমুনার জন্য।',
                     style: GoogleFonts.hindSiliguri(
