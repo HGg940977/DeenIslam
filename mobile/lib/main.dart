@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'core/services/location_service.dart';
+import 'core/services/reminder_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/dua/presentation/dua_screen.dart';
@@ -26,13 +28,46 @@ class DeenIslamApp extends StatefulWidget {
   State<DeenIslamApp> createState() => _DeenIslamAppState();
 }
 
-class _DeenIslamAppState extends State<DeenIslamApp> {
+class _DeenIslamAppState extends State<DeenIslamApp> with WidgetsBindingObserver {
   ThemeMode _themeMode = ThemeMode.light;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadSavedTheme();
+    // Non-blocking: never delays first frame or prompts for permissions.
+    _syncReminders();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Covers date, time-zone and permission changes while the app was away.
+    if (state == AppLifecycleState.resumed) _syncReminders();
+  }
+
+  /// Refreshes the saved GPS fix silently (only if permission is already
+  /// granted and the fix is stale), then re-applies the reminder schedule.
+  Future<void> _syncReminders() async {
+    try {
+      var loc = await LocationService.load();
+      if (LocationService.isStale(loc) && await LocationService.hasPermission()) {
+        final r = await LocationService.detect(requestPermission: false);
+        if (r.isSuccess) loc = r.location!;
+      }
+      await ReminderService.instance.init();
+      if (await ReminderService.instance.notificationsAllowed()) {
+        await ReminderService.instance.reschedule(loc);
+      }
+    } catch (_) {
+      // Reminders are best-effort at startup; screens report real errors.
+    }
   }
 
   Future<void> _loadSavedTheme() async {

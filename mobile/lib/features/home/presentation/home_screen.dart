@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/audio_service.dart';
 import '../../../core/services/storage_service.dart';
+import '../../../core/services/location_service.dart';
+import '../../../data/models/app_location.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bengali_numerals.dart';
 import '../../../data/models/allah_name.dart';
@@ -46,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   late Timer _timer;
   DateTime _now = DateTime.now();
   late PrayerTimesModel _prayerTimes;
-  String _selectedCity = 'ঢাকা';
+  late AppLocation _location;
   
   // Bento 99 Names State (Mobile view: exactly 5 names per batch)
   int _bentoNameBatchIndex = 0;
@@ -58,12 +61,18 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _prayerTimes = PrayerTimesModel.forCity(_now, _selectedCity);
+    _location = LocationService.manual('ঢাকা');
+    _prayerTimes = PrayerTimesModel.forLocation(_now, _location);
     _loadSelectedCity();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
-          _now = DateTime.now();
+          final next = DateTime.now();
+          // Recalculate when the calendar day changes (e.g. after midnight).
+          if (!_prayerTimes.isSameDay(next)) {
+            _prayerTimes = PrayerTimesModel.forLocation(next, _location);
+          }
+          _now = next;
         });
       }
     });
@@ -110,11 +119,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadSelectedCity() async {
-    final city = await StorageService.getSelectedCity();
+    final loc = await LocationService.load();
     if (!mounted) return;
     setState(() {
-      _selectedCity = city;
-      _prayerTimes = PrayerTimesModel.forCity(_now, city);
+      _location = loc;
+      _prayerTimes = PrayerTimesModel.forLocation(_now, loc);
     });
   }
 
@@ -165,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 Text(
-                  "$_selectedCity, বাংলাদেশ",
+                  _location.isGps ? _location.label : "${_location.label}, বাংলাদেশ",
                   style: GoogleFonts.hindSiliguri(
                     fontSize: 11,
                     color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,

@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/services/audio_service.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/services/reminder_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bengali_numerals.dart';
+import '../../../data/models/app_location.dart';
 import '../../../data/models/prayer_times_model.dart';
 
 class PrayerScreen extends StatefulWidget {
@@ -14,13 +19,15 @@ class PrayerScreen extends StatefulWidget {
   State<PrayerScreen> createState() => _PrayerScreenState();
 }
 
-class _PrayerScreenState extends State<PrayerScreen> {
-  final DateTime _now = DateTime.now();
+class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver {
+  DateTime _now = DateTime.now();
+  late AppLocation _location;
   late PrayerTimesModel _prayerTimes;
-  String _selectedCity = "ঢাকা";
   Map<String, bool> _azanAlarms = {};
   String _selectedMuazzin = "মক্কা শরীফ (হারামাইন)";
   int _preReminderMinutes = 15;
+  bool _detecting = false;
+  Timer? _dayTimer;
 
   final List<String> _cities = PrayerTimesModel.allDistricts;
 
@@ -34,56 +41,155 @@ class _PrayerScreenState extends State<PrayerScreen> {
   @override
   void initState() {
     super.initState();
-    _prayerTimes = PrayerTimesModel.forCity(_now, _selectedCity);
+    WidgetsBinding.instance.addObserver(this);
+    _location = LocationService.manual('ঢাকা');
+    _prayerTimes = PrayerTimesModel.forLocation(_now, _location);
     _loadPreferences();
+    // Recompute when the calendar day changes while the screen stays open.
+    _dayTimer = Timer.periodic(const Duration(minutes: 1), (_) => _refreshIfDayChanged());
+  }
+
+  @override
+  void dispose() {
+    _dayTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshIfDayChanged();
+  }
+
+  void _refreshIfDayChanged() {
+    final now = DateTime.now();
+    if (!mounted) return;
+    if (now.year != _now.year || now.month != _now.month || now.day != _now.day) {
+      setState(() {
+        _now = now;
+        _prayerTimes = PrayerTimesModel.forLocation(now, _location);
+      });
+    }
+  }
+
+  void _applyLocation(AppLocation loc) {
+    _now = DateTime.now();
+    _location = loc;
+    _prayerTimes = PrayerTimesModel.forLocation(_now, loc);
   }
 
   Future<void> _loadPreferences() async {
-    final city = await StorageService.getSelectedCity();
+    final loc = await LocationService.load();
     final alarms = await StorageService.getAzanAlarms();
     final muazzin = await StorageService.getAzanMuazzin();
     final preMin = await StorageService.getAzanPreReminderMinutes();
     if (!mounted) return;
     setState(() {
-      _selectedCity = city;
-      _prayerTimes = PrayerTimesModel.forCity(_now, city);
+      _applyLocation(loc);
       _azanAlarms = alarms;
       _selectedMuazzin = muazzin;
       _preReminderMinutes = preMin;
     });
   }
 
+  void _toast(String msg, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg, style: GoogleFonts.hindSiliguri(fontSize: 13)),
+          duration: Duration(seconds: error ? 4 : 2),
+          backgroundColor: error ? Colors.red.shade700 : AppColors.emerald,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  /// Re-applies reminders for the current location and reports the real result.
+  Future<ReminderResult> _reschedule() async {
+    final r = await ReminderService.instance.reschedule(_location);
+    if (r.ok && !r.exact) {
+      _toast('অ্যান্ড্রয়েডের সীমাবদ্ধতার কারণে রিমাইন্ডার কয়েক মিনিট দেরিতে আসতে পারে।');
+    }
+    return r;
+  }
+
   Future<void> _onCityChanged(String city) async {
-    await StorageService.setSelectedCity(city);
+    final loc = await LocationService.selectManual(city);
+    if (!mounted) return;
+    setState(() => _applyLocation(loc));
+    final r = await _reschedule();
+    if (!r.ok && r.status == ReminderStatus.failed) {
+      _toast('রিমাইন্ডার আপডেট করা যায়নি', error: true);
+    }
+  }
+
+  Future<void> _detectLocation() async {
+    if (_detecting) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('অবস্থান ব্যবহারের অনুমতি',
+            style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.bold)),
+        content: Text(
+          'আপনার এলাকার সঠিক নামাজের সময় ও কিবলা দেখাতে একবার ফোনের অবস্থান (GPS) দরকার। '
+          'অবস্থান শুধু ফোনেই সংরক্ষিত থাকে এবং ক্রমাগত ট্র্যাক করা হয় না।',
+          style: GoogleFonts.hindSiliguri(fontSize: 13.5, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('এখন নয়', style: GoogleFonts.hindSiliguri()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('এগিয়ে যান', style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _detecting = true);
+    final result = await LocationService.detect();
     if (!mounted) return;
     setState(() {
-      _selectedCity = city;
-      _prayerTimes = PrayerTimesModel.forCity(_now, city);
+      _detecting = false;
+      if (result.isSuccess) _applyLocation(result.location!);
     });
+    _toast(result.message, error: !result.isSuccess);
+    if (result.isSuccess) await _reschedule();
   }
 
   Future<void> _toggleAlarm(String waqtName) async {
     final current = _azanAlarms[waqtName] ?? true;
     final nextVal = !current;
-    await StorageService.setAzanAlarm(waqtName, nextVal);
     HapticFeedback.lightImpact();
+
+    if (nextVal) {
+      final allowed = await ReminderService.instance.requestNotificationPermission();
+      if (!allowed) {
+        _toast('নোটিফিকেশনের অনুমতি ছাড়া রিমাইন্ডার চালু করা যাবে না। ফোনের সেটিংস থেকে অনুমতি দিন।',
+            error: true);
+        return;
+      }
+    }
+
+    await StorageService.setAzanAlarm(waqtName, nextVal);
+    final r = await _reschedule();
+    if (nextVal && !r.ok) {
+      // Do not show an enabled state when scheduling actually failed.
+      await StorageService.setAzanAlarm(waqtName, current);
+      _toast('রিমাইন্ডার চালু করা যায়নি, আবার চেষ্টা করুন', error: true);
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _azanAlarms[waqtName] = nextVal;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          nextVal
-              ? '$waqtName-এর আজান অ্যালার্ম চালু করা হয়েছে'
-              : '$waqtName-এর আজান অ্যালার্ম বন্ধ করা হয়েছে',
-          style: GoogleFonts.hindSiliguri(fontSize: 13),
-        ),
-        duration: const Duration(seconds: 1),
-        backgroundColor: AppColors.emerald,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    _toast(nextVal
+        ? '$waqtName-এর রিমাইন্ডার চালু করা হয়েছে'
+        : '$waqtName-এর রিমাইন্ডার বন্ধ করা হয়েছে');
   }
 
   void _showAzanSettingsSheet(bool isDark) {
@@ -194,6 +300,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
                               await StorageService.setAzanPreReminderMinutes(mins);
                               setModalState(() => _preReminderMinutes = mins);
                               setState(() => _preReminderMinutes = mins);
+                              await _reschedule();
                             },
                           ),
                         ),
@@ -306,7 +413,7 @@ class _PrayerScreenState extends State<PrayerScreen> {
       },
     ];
 
-    final enabledCount = _azanAlarms.values.where((v) => v).length;
+    final enabledCount = ReminderService.waqtKeys.where((k) => _azanAlarms[k] ?? true).length;
 
     return Scaffold(
       appBar: AppBar(
@@ -347,7 +454,15 @@ class _PrayerScreenState extends State<PrayerScreen> {
                         child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
-                          value: _selectedCity,
+                          value: _location.isGps ? null : _location.label,
+                          hint: Text(
+                            _location.label,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.hindSiliguri(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                            ),
+                          ),
                           items: _cities.map((city) {
                             return DropdownMenuItem(
                               value: city,
@@ -371,7 +486,17 @@ class _PrayerScreenState extends State<PrayerScreen> {
                     ],
                   ),
                   ),
-                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _detecting ? null : _detectLocation,
+                    tooltip: 'আমার অবস্থান ব্যবহার করুন',
+                    icon: _detecting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location, color: AppColors.emerald, size: 20),
+                  ),
                   InkWell(
                     onTap: () => _showAzanSettingsSheet(isDark),
                     borderRadius: BorderRadius.circular(8),

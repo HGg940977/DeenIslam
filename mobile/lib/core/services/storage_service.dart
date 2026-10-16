@@ -51,6 +51,7 @@ class StorageService {
   static const String _azanMuazzinKey = 'deen_azan_muazzin_v1';
   static const String _azanPreReminderKey = 'deen_azan_pre_reminder_v1';
   static const String _selectedCityKey = 'deen_selected_city_v1';
+  static const String _gpsLocationKey = 'deen_gps_location_v1';
   static const String _lastReadSurahKey = 'deen_last_read_surah_v1';
   static const String _darkModeKey = 'deen_dark_mode_v1';
 
@@ -74,6 +75,42 @@ class StorageService {
   static Future<void> setSelectedCity(String city) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedCityKey, city);
+  }
+
+  // --- GPS Location Persistence (last detected fix) ---
+  static Future<Map<String, dynamic>?> getGpsLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_gpsLocationKey);
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setGpsLocation({
+    required double latitude,
+    required double longitude,
+    required String label,
+    required DateTime detectedAt,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _gpsLocationKey,
+      jsonEncode({
+        'lat': latitude,
+        'lon': longitude,
+        'label': label,
+        'at': detectedAt.millisecondsSinceEpoch,
+      }),
+    );
+  }
+
+  static Future<void> clearGpsLocation() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_gpsLocationKey);
   }
 
   // --- Last Read Surah ---
