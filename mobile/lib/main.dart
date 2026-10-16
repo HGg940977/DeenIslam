@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'core/services/audio_service.dart';
 import 'core/services/location_service.dart';
 import 'core/services/reminder_service.dart';
 import 'core/services/storage_service.dart';
 import 'core/theme/app_theme.dart';
+import 'data/models/prayer_times_model.dart';
 import 'features/dua/presentation/dua_screen.dart';
 import 'features/hadith/presentation/hadith_screen.dart';
 import 'features/home/presentation/home_screen.dart';
@@ -118,6 +122,68 @@ class MainNavigationScaffold extends StatefulWidget {
 
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   int _currentIndex = 0;
+  Timer? _adhanTimer;
+  String? _lastAdhanKey;
+
+  // Same stream the settings preview uses. It needs internet and plays only
+  // while the app is open; background playback is not implemented.
+  static const String _adhanUrl = 'https://www.islamcan.com/audio/adhan/azan1.mp3';
+
+  @override
+  void initState() {
+    super.initState();
+    _adhanTimer = Timer.periodic(const Duration(seconds: 20), (_) => _checkAdhan());
+  }
+
+  @override
+  void dispose() {
+    _adhanTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Foreground Adhan: plays once when an enabled prayer time arrives while
+  /// the app is open. Uses the same schedule as the UI and reminders.
+  Future<void> _checkAdhan() async {
+    try {
+      final now = DateTime.now();
+      final loc = await LocationService.load();
+      final t = PrayerTimesModel.forLocation(now, loc);
+      final waqts = {
+        'ফজর': t.fajr,
+        'যোহর': t.dhuhr,
+        'আসর': t.asr,
+        'মাগরিব (ইফতার)': t.maghrib,
+        'ইশা': t.isha,
+      };
+      final alarms = await StorageService.getAzanAlarms();
+      for (final e in waqts.entries) {
+        if (e.value.hour != now.hour || e.value.minute != now.minute) continue;
+        if (!(alarms[e.key] ?? true)) return;
+        final key = '${now.year}-${now.month}-${now.day}-${e.key}';
+        if (_lastAdhanKey == key) return;
+        _lastAdhanKey = key;
+        if (!mounted) return;
+        await AudioService.instance.playUrl(_adhanUrl);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              content: Text('${e.key}-এর ওয়াক্ত হয়েছে'),
+              duration: const Duration(seconds: 30),
+              action: SnackBarAction(
+                label: 'থামান',
+                onPressed: () => AudioService.instance.stop(),
+              ),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        return;
+      }
+    } catch (_) {
+      // Never crash the UI because of an optional foreground sound.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
