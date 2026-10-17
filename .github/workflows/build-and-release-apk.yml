@@ -54,6 +54,14 @@ jobs:
             echo "No keystore secrets set; APK will be signed with the debug key."
           fi
 
+      - name: Check bundled Adhan audio
+        run: |
+          if ls mobile/android/app/src/main/res/raw/adhan_1.* >/dev/null 2>&1; then
+            echo "::notice::Adhan audio found: full Adhan will play from prayer notifications."
+          else
+            echo "::notice::No res/raw/adhan_1.* file: reminders use the default notification sound (see mobile/docs/ADHAN_AUDIO.md)."
+          fi
+
       - name: Install Flutter Dependencies
         run: |
           cd mobile
@@ -62,7 +70,12 @@ jobs:
       - name: Build Release APK
         run: |
           cd mobile
-          flutter build apk --release --no-tree-shake-icons
+          set +e
+          flutter build apk --release --no-tree-shake-icons 2>&1 | tee build.log
+          status=${PIPESTATUS[0]}
+          # Surface the real failure reason as annotations (logs need auth).
+          grep -E -A6 "What went wrong" build.log | grep -v "^--" | grep -E "[A-Za-z]" | head -30 | while read -r l; do echo "::error::${l:0:400}"; done
+          exit $status
 
       - name: Determine Release Tag
         id: vars
