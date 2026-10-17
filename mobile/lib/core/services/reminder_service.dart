@@ -206,7 +206,7 @@ class ReminderService {
         final times = [model.fajr, model.dhuhr, model.asr, model.maghrib, model.isha];
 
         for (final p in enabled) {
-          final at = model.toDateTime(times[p]);
+          final at = model.instant(times[p]);
 
           if (at.isAfter(now)) {
             await _schedule(

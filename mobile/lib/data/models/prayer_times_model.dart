@@ -1,6 +1,7 @@
 import 'package:adhan_dart/adhan_dart.dart' as adhan;
 import 'package:flutter/material.dart';
 import '../../core/services/prayer_service.dart';
+import '../../core/services/timezone_service.dart';
 import '../../core/utils/bengali_numerals.dart';
 import 'app_location.dart';
 import 'district_coordinates.dart';
@@ -15,6 +16,10 @@ class PrayerTimesModel {
   final TimeOfDay isha;
   final TimeOfDay imsak;
 
+  /// UTC offset of the place the times were calculated for, or null when the
+  /// device time zone applies. Times above are wall-clock at that place.
+  final Duration? utcOffset;
+
   const PrayerTimesModel({
     required this.date,
     required this.fajr,
@@ -24,6 +29,7 @@ class PrayerTimesModel {
     required this.maghrib,
     required this.isha,
     required this.imsak,
+    this.utcOffset,
   });
 
   /// Default schedule (Dhaka) used only until a location has been loaded.
@@ -47,6 +53,7 @@ class PrayerTimesModel {
       date,
       location.latitude,
       location.longitude,
+      utcOffset: TimeZoneService.offsetFor(location.timezone, date),
     );
   }
 
@@ -97,6 +104,7 @@ class PrayerTimesModel {
       maghrib: tod(times.maghrib),
       isha: tod(times.isha),
       imsak: tod(times.fajr.subtract(const Duration(minutes: 10))),
+      utcOffset: utcOffset,
     );
   }
 
@@ -105,6 +113,24 @@ class PrayerTimesModel {
       date.year == other.year &&
       date.month == other.month &&
       date.day == other.day;
+
+  /// The current moment expressed as wall-clock time at the schedule's place.
+  /// Use this (not the raw device time) with [getUpcomingStatus] and
+  /// [isSameDay] so a city in another time zone counts down correctly.
+  DateTime wallNow(DateTime now) {
+    final off = utcOffset;
+    if (off == null) return now;
+    final u = now.toUtc().add(off);
+    return DateTime(u.year, u.month, u.day, u.hour, u.minute, u.second);
+  }
+
+  /// The absolute instant of [time] on this schedule's day (for alarms).
+  DateTime instant(TimeOfDay time) {
+    final off = utcOffset;
+    if (off == null) return toDateTime(time);
+    return DateTime.utc(date.year, date.month, date.day, time.hour, time.minute)
+        .subtract(off);
+  }
 
   DateTime toDateTime(TimeOfDay time) {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);

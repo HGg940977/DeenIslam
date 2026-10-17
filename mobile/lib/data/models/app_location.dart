@@ -13,12 +13,17 @@ class AppLocation {
   /// When a GPS fix was obtained (null for manual selection).
   final DateTime? detectedAt;
 
+  /// IANA time-zone id of a manually selected place (e.g. `Europe/London`).
+  /// Null for GPS fixes and district picks, which use the device time zone.
+  final String? timezone;
+
   const AppLocation({
     required this.latitude,
     required this.longitude,
     required this.label,
     required this.isGps,
     this.detectedAt,
+    this.timezone,
   });
 
   @override
@@ -26,8 +31,9 @@ class AppLocation {
       other is AppLocation &&
       other.latitude == latitude &&
       other.longitude == longitude &&
-      other.isGps == isGps;
+      other.isGps == isGps &&
+      other.timezone == timezone;
 
   @override
-  int get hashCode => Object.hash(latitude, longitude, isGps);
+  int get hashCode => Object.hash(latitude, longitude, isGps, timezone);
 }
