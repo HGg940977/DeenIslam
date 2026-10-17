@@ -54,6 +54,14 @@ jobs:
             echo "No keystore secrets set; APK will be signed with the debug key."
           fi
 
+      - name: Check bundled Adhan audio
+        run: |
+          if ls mobile/android/app/src/main/res/raw/adhan.* >/dev/null 2>&1; then
+            echo "::notice::Adhan audio found: full Adhan will play from prayer notifications."
+          else
+            echo "::notice::No res/raw/adhan.* file: reminders use the default notification sound (see mobile/docs/ADHAN_AUDIO.md)."
+          fi
+
       - name: Install Flutter Dependencies
         run: |
           cd mobile

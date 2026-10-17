@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -46,6 +47,21 @@ class ReminderService {
 
   static const int horizonDays = 7;
   static const String _channelId = 'prayer_reminders';
+  static const String _adhanChannelId = 'prayer_adhan_v1';
+  static const MethodChannel _native = MethodChannel('com.mehedishakeel.deenislam/audio');
+  bool? _adhanAvailable;
+
+  /// True only when an Adhan audio file was added to the Android build as
+  /// `res/raw/adhan.*`. Nothing is bundled by default (no licensed audio).
+  Future<bool> adhanAvailable() async {
+    if (_adhanAvailable != null) return _adhanAvailable!;
+    try {
+      _adhanAvailable = await _native.invokeMethod<bool>('hasAdhanSound') ?? false;
+    } catch (_) {
+      _adhanAvailable = false;
+    }
+    return _adhanAvailable!;
+  }
 
   /// Alarm keys match the waqt names used by the prayer screen.
   static const List<String> waqtKeys = [
@@ -82,6 +98,21 @@ class ReminderService {
         importance: Importance.high,
       ),
     );
+    if (await adhanAvailable()) {
+      // The channel's sound is played by Android itself when the alarm fires,
+      // so it works with the app closed. It follows the phone's volume and
+      // silent / Do-Not-Disturb rules (usage = notification).
+      await android?.createNotificationChannel(
+        const AndroidNotificationChannel(
+          _adhanChannelId,
+          'আজান (ওয়াক্ত শুরু)',
+          description: 'ওয়াক্ত শুরু হলে আজানের শব্দ',
+          importance: Importance.max,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound('adhan'),
+        ),
+      );
+    }
     _initialized = true;
   }
 
@@ -151,6 +182,19 @@ class ReminderService {
           category: AndroidNotificationCategory.reminder,
         ),
       );
+      final useAdhan = await adhanAvailable() && await StorageService.getAdhanSound();
+      const adhanDetails = NotificationDetails(
+        android: AndroidNotificationDetails(
+          _adhanChannelId,
+          'আজান (ওয়াক্ত শুরু)',
+          channelDescription: 'ওয়াক্ত শুরু হলে আজানের শব্দ',
+          importance: Importance.max,
+          priority: Priority.high,
+          category: AndroidNotificationCategory.reminder,
+          playSound: true,
+          sound: RawResourceAndroidNotificationSound('adhan'),
+        ),
+      );
 
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
@@ -170,7 +214,7 @@ class ReminderService {
               title: '${_shortNames[p]}-এর ওয়াক্ত হয়েছে',
               body: '${model.formatTime(times[p])} • ${location.label}',
               at: at,
-              details: details,
+              details: useAdhan ? adhanDetails : details,
               mode: mode,
             );
             count++;

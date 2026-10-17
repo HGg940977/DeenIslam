@@ -163,6 +163,12 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
         if (_lastAdhanKey == key) return;
         _lastAdhanKey = key;
         if (!mounted) return;
+        // When the Adhan file is bundled, Android plays it itself from the
+        // scheduled notification (also with the app open); don't double-play.
+        if (await ReminderService.instance.adhanAvailable() &&
+            await StorageService.getAdhanSound()) {
+          return;
+        }
         await AudioService.instance.playUrl(_adhanUrl);
         if (!mounted) return;
         ScaffoldMessenger.of(context)

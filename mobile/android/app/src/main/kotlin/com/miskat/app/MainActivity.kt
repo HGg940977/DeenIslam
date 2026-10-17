@@ -72,6 +72,10 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                     releasePlayer()
                     result.success(true)
                 }
+                "hasAdhanSound" -> {
+                    // True only when an Adhan file was added as res/raw/adhan.*
+                    result.success(resources.getIdentifier("adhan", "raw", packageName) != 0)
+                }
                 else -> result.notImplemented()
             }
         }

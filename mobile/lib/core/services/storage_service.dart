@@ -48,6 +48,7 @@ class BookmarkItem {
 class StorageService {
   static const String _bookmarksKey = 'deen_bookmarks_v1';
   static const String _azanAlarmsKey = 'deen_azan_alarms_v1';
+  static const String _adhanSoundKey = 'deen_adhan_sound_v1';
   static const String _azanMuazzinKey = 'deen_azan_muazzin_v1';
   static const String _azanPreReminderKey = 'deen_azan_pre_reminder_v1';
   static const String _selectedCityKey = 'deen_selected_city_v1';
@@ -56,6 +57,17 @@ class StorageService {
   static const String _darkModeKey = 'deen_dark_mode_v1';
 
   // --- Theme Persistence ---
+  /// Whether the full Adhan sound (when bundled) is used for prayer reminders.
+  static Future<bool> getAdhanSound() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_adhanSoundKey) ?? true;
+  }
+
+  static Future<void> setAdhanSound(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_adhanSoundKey, enabled);
+  }
+
   static Future<bool> getDarkMode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool(_darkModeKey) ?? false;

@@ -27,6 +27,8 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   String _selectedMuazzin = "মক্কা শরীফ (হারামাইন)";
   int _preReminderMinutes = 15;
   bool _detecting = false;
+  bool _adhanFile = false; // full Adhan audio bundled in this build
+  bool _adhanOn = true;
   Timer? _dayTimer;
 
   final List<String> _cities = PrayerTimesModel.allDistricts;
@@ -83,8 +85,12 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
     final alarms = await StorageService.getAzanAlarms();
     final muazzin = await StorageService.getAzanMuazzin();
     final preMin = await StorageService.getAzanPreReminderMinutes();
+    final adhanFile = await ReminderService.instance.adhanAvailable();
+    final adhanOn = await StorageService.getAdhanSound();
     if (!mounted) return;
     setState(() {
+      _adhanFile = adhanFile;
+      _adhanOn = adhanOn;
       _applyLocation(loc);
       _azanAlarms = alarms;
       _selectedMuazzin = muazzin;
@@ -357,14 +363,32 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
                     },
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'অ্যাপ বন্ধ বা ব্যাকগ্রাউন্ডে থাকলে ওয়াক্তে ফোনের ডিফল্ট নোটিফিকেশন শব্দে রিমাইন্ডার আসে। অ্যাপ খোলা থাকলে ওয়াক্ত হলে আজান নিজে বাজে (ইন্টারনেট প্রয়োজন; যে ওয়াক্তের অ্যালার্ম চালু শুধু সেটির)। ব্যাকগ্রাউন্ডে আজান বাজে না। মুয়াজ্জিন নির্বাচন শুধু নমুনার জন্য।',
-                    style: GoogleFonts.hindSiliguri(
-                      fontSize: 11.5,
-                      height: 1.5,
-                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  if (_adhanFile)
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.emerald,
+                      title: Text('ওয়াক্ত শুরুতে পূর্ণ আজান',
+                          style: GoogleFonts.hindSiliguri(fontSize: 13.5, fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                          'অ্যাপ বন্ধ থাকলেও বাজবে। ফোনের ভলিউম, সাইলেন্ট ও ডু-নট-ডিস্টার্ব সেটিং মানবে।',
+                          style: GoogleFonts.hindSiliguri(fontSize: 11.5, height: 1.4)),
+                      value: _adhanOn,
+                      onChanged: (v) async {
+                        await StorageService.setAdhanSound(v);
+                        setModalState(() => _adhanOn = v);
+                        setState(() => _adhanOn = v);
+                        await _reschedule();
+                      },
+                    )
+                  else
+                    Text(
+                      'এই সংস্করণে আজানের অডিও ফাইল যুক্ত নেই, তাই ওয়াক্ত হলে ফোনের ডিফল্ট নোটিফিকেশন শব্দে রিমাইন্ডার আসে। অ্যাপ খোলা থাকলে আজান ইন্টারনেট থেকে বাজে। নিচের বাটন একটি নমুনা শোনায় (নেট প্রয়োজন)।',
+                      style: GoogleFonts.hindSiliguri(
+                        fontSize: 11.5,
+                        height: 1.5,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: () {
