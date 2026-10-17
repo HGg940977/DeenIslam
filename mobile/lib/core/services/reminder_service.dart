@@ -6,7 +6,10 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/app_location.dart';
 import '../../data/models/prayer_times_model.dart';
+import '../utils/hijri_date.dart';
+import 'daily_content.dart';
 import 'location_service.dart';
+import 'schedule_validator.dart';
 import 'storage_service.dart';
 
 enum ReminderStatus {
@@ -55,6 +58,10 @@ class ReminderService {
   static String adhanLabel(int choice) => 'আজান $choice';
   static const MethodChannel _native = MethodChannel('com.mehedishakeel.deenislam/audio');
   bool? _adhanAvailable;
+
+  /// Problems found by the schedule validator during the last reschedule
+  /// (days whose alarms were skipped). Empty when everything was scheduled.
+  List<String> lastDiagnostics = [];
 
   /// True only when the Adhan files are part of the Android build
   /// (`res/raw/adhan_1.*` ...).
@@ -172,6 +179,13 @@ class ReminderService {
       }
       final fridayOn = await StorageService.getNotifPref('friday');
       final sawmOn = await StorageService.getNotifPref('weekly_sawm');
+      final dailyOn = await StorageService.getNotifPref('daily_ayah', defaultValue: false);
+      final bidOn = await StorageService.getNotifPref('ayyam_bid', defaultValue: false);
+      final dailyMinutes = await StorageService.getDailyReminderMinutes();
+      final hijriAdjust = await StorageService.getHijriAdjust();
+      // Same calculation settings as the screens (also when started in background).
+      await StorageService.loadCalcConfig();
+      lastDiagnostics = [];
 
       final alarms = await StorageService.getAzanAlarms();
       final preMinutes = await StorageService.getAzanPreReminderMinutes();
@@ -179,7 +193,7 @@ class ReminderService {
         for (var i = 0; i < waqtKeys.length; i++)
           if (alarms[waqtKeys[i]] ?? true) i,
       ];
-      if (enabled.isEmpty && !fridayOn && !sawmOn) {
+      if (enabled.isEmpty && !fridayOn && !sawmOn && !dailyOn && !bidOn) {
         return const ReminderResult(ReminderStatus.nothingEnabled);
       }
       if (!await notificationsAllowed()) {
@@ -259,11 +273,67 @@ class ReminderService {
           await weekly(3, 20, 'আগামীকাল বৃহস্পতিবার', 'নফল রোজা রাখতে চাইলে সেহরির প্রস্তুতি ও নিয়ত করতে পারেন।');
         }
 
+        // Daily Ayah / Hadith from the app's bundled content (phone clock).
+        if (dailyOn) {
+          final content = DailyContentService.forDay(devDay);
+          final at = DateTime(devDay.year, devDay.month, devDay.day, dailyMinutes ~/ 60, dailyMinutes % 60);
+          if (content != null && at.isAfter(now)) {
+            await _schedule(
+              id: 8100 + d,
+              title: content.title,
+              body: content.body,
+              at: at,
+              details: NotificationDetails(
+                android: AndroidNotificationDetails(
+                  'daily_ayah_hadith',
+                  'দৈনিক আয়াত ও হাদিস',
+                  channelDescription: 'প্রতিদিন একটি আয়াত বা হাদিসের স্মরণ',
+                  importance: Importance.defaultImportance,
+                  priority: Priority.defaultPriority,
+                  category: AndroidNotificationCategory.reminder,
+                  styleInformation: BigTextStyleInformation(content.body),
+                ),
+              ),
+              mode: mode,
+            );
+            count++;
+          }
+        }
+
+        // Ayyam al-Bid: evening before the 13th/14th/15th Hijri day. This is a
+        // calendar calculation (+ user adjustment); moon sighting can differ.
+        if (bidOn) {
+          final h = HijriDate.fromGregorian(devDay, adjustDays: hijriAdjust);
+          if (h.day >= 12 && h.day <= 14) {
+            final at = DateTime(devDay.year, devDay.month, devDay.day, 20);
+            if (at.isAfter(now)) {
+              await _schedule(
+                id: 8300 + d * 10 + (h.day - 12),
+                title: 'আগামীকাল আইয়ামে বীযের রোজা',
+                body: 'আগামীকাল হিজরি ${h.day + 1} তারিখ (${h.monthNameBn})। নফল রোজা রাখতে চাইলে নিয়ত ও সেহরির প্রস্তুতি নিন। চাঁদ দেখার ওপর নির্ভর করে তারিখ ১ দিন এদিক-ওদিক হতে পারে।',
+                at: at,
+                details: generalDetails,
+                mode: mode,
+              );
+              count++;
+            }
+          }
+        }
+
         final day = today.add(Duration(days: d));
         final model = PrayerTimesModel.forLocation(day, location);
+        final check = ScheduleValidator.validate(model);
+        if (!check.ok) {
+          lastDiagnostics.add('${day.year}-${day.month}-${day.day}: ${check.errors.join(', ')}');
+          continue; // never schedule alarms from a questionable schedule
+        }
         final times = [model.fajr, model.dhuhr, model.asr, model.maghrib, model.isha];
 
         for (final p in enabled) {
+          if (p == 4 && check.ishaPastMidnight) {
+            lastDiagnostics.add('${day.year}-${day.month}-${day.day}: ইশা মধ্যরাতের পরে, অ্যালার্ম বসানো হয়নি');
+            continue;
+          }
           final at = model.instant(times[p]);
 
           if (at.isAfter(now)) {

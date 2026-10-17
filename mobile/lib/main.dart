@@ -44,6 +44,7 @@ class _DeenIslamAppState extends State<DeenIslamApp> with WidgetsBindingObserver
     StorageService.getOnboarded().then((v) {
       if (mounted) setState(() => _onboarded = v);
     });
+    StorageService.loadCalcConfig();
     _loadSavedTheme();
     // Non-blocking: never delays first frame or prompts for permissions.
     _syncReminders();

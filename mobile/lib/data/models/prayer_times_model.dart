@@ -5,6 +5,7 @@ import '../../core/services/timezone_service.dart';
 import '../../core/utils/bengali_numerals.dart';
 import 'app_location.dart';
 import 'district_coordinates.dart';
+import 'calc_config.dart';
 
 class PrayerTimesModel {
   final DateTime date;
@@ -69,8 +70,8 @@ class PrayerTimesModel {
   /// Real astronomical calculation (solar position, Fajr/Isha twilight angles,
   /// Asr shadow length) using the maintained `adhan_dart` library.
   ///
-  /// Method: University of Islamic Sciences, Karachi (Fajr 18 deg, Isha 18 deg)
-  /// with the Hanafi Asr convention - see [PrayerService.methodDescription].
+  /// Method and Asr rule come from [CalcConfig.current] unless [config] is
+  /// given (default: Karachi, Fajr/Isha 18 deg, with the Hanafi Asr rule).
   /// Results are converted to the device's local time zone, or to
   /// [utcOffset] when given (used by tests for reproducibility).
   /// Throws [ArgumentError] for invalid coordinates; never invents a schedule.
@@ -79,16 +80,13 @@ class PrayerTimesModel {
     double latitude,
     double longitude, {
     Duration? utcOffset,
+    CalcConfig? config,
   }) {
     if (!PrayerService.isValidCoordinate(latitude, longitude)) {
       throw ArgumentError('Invalid coordinates: $latitude, $longitude');
     }
-    final params = adhan.CalculationMethodParameters.karachi();
-    params.madhab = adhan.Madhab.hanafi;
-    // Above ~48 degrees the 18-degree twilight may never occur in summer.
-    if (latitude.abs() > 48) {
-      params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
-    }
+    // The user's chosen method and Asr rule (default Karachi + Hanafi).
+    final params = (config ?? CalcConfig.current).parameters(latitude);
 
     final times = adhan.PrayerTimes(
       coordinates: adhan.Coordinates(latitude, longitude),

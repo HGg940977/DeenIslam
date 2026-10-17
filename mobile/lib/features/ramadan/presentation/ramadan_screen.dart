@@ -7,6 +7,7 @@ import '../../../data/models/app_location.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bengali_numerals.dart';
+import '../../../data/models/calc_config.dart';
 import '../../../data/models/prayer_times_model.dart';
 
 class RamadanScreen extends StatefulWidget {
@@ -35,6 +36,20 @@ class _RamadanScreenState extends State<RamadanScreen> {
     super.initState();
     _prayerTimes = PrayerTimesModel.forLocation(DateTime.now(), _location);
     _loadCity();
+    CalcConfig.revision.addListener(_onCalcChanged);
+  }
+
+  void _onCalcChanged() {
+    if (!mounted) return;
+    setState(() {
+      _prayerTimes = PrayerTimesModel.forLocation(PrayerTimesModel.placeToday(DateTime.now(), _location), _location);
+    });
+  }
+
+  @override
+  void dispose() {
+    CalcConfig.revision.removeListener(_onCalcChanged);
+    super.dispose();
   }
 
   Future<void> _loadCity() async {

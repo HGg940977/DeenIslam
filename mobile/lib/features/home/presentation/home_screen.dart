@@ -9,6 +9,7 @@ import '../../../data/models/app_location.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bengali_numerals.dart';
 import '../../../data/models/allah_name.dart';
+import '../../../data/models/calc_config.dart';
 import '../../../data/models/prayer_times_model.dart';
 import '../../../data/repositories/allah_names_data.dart';
 import '../../about/presentation/about_screen.dart';
@@ -53,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   
   // Bento 99 Names State (Mobile view: exactly 5 names per batch)
   int _bentoNameBatchIndex = 0;
+  int _calcRev = CalcConfig.revision.value;
   
   // Audio state
   bool _isPlayingQuran = false;
@@ -70,7 +72,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           final next = DateTime.now();
           // Recalculate when the calendar day changes (e.g. after midnight).
           final today = PrayerTimesModel.placeToday(next, _location);
-          if (!_prayerTimes.isSameDay(today)) {
+          if (!_prayerTimes.isSameDay(today) || _calcRev != CalcConfig.revision.value) {
+            _calcRev = CalcConfig.revision.value;
             _prayerTimes = PrayerTimesModel.forLocation(today, _location);
           }
           _now = next;

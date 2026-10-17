@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/services/reminder_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/utils/bengali_numerals.dart';
+import 'calculation_settings_screen.dart';
 import 'prayer_alarm_settings_screen.dart';
 
 /// Global notification settings. Every switch is persisted and applied to the
@@ -19,6 +21,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   bool _master = true;
   bool _friday = true;
   bool _sawm = true;
+  bool _daily = false;
+  bool _bid = false;
+  int _dailyMinutes = 7 * 60;
   bool _loaded = false;
   bool _busy = false;
 
@@ -32,11 +37,17 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     final m = await StorageService.getNotifPref('master');
     final f = await StorageService.getNotifPref('friday');
     final w = await StorageService.getNotifPref('weekly_sawm');
+    final dy = await StorageService.getNotifPref('daily_ayah', defaultValue: false);
+    final bd = await StorageService.getNotifPref('ayyam_bid', defaultValue: false);
+    final dm = await StorageService.getDailyReminderMinutes();
     if (!mounted) return;
     setState(() {
       _master = m;
       _friday = f;
       _sawm = w;
+      _daily = dy;
+      _bid = bd;
+      _dailyMinutes = dm;
       _loaded = true;
     });
   }
@@ -128,6 +139,18 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     ),
                   ),
                 ),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                  leading: const Icon(Icons.calculate_outlined, color: AppColors.emerald),
+                  title: Text('গণনা পদ্ধতি', style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w600)),
+                  subtitle: Text('নামাজের সময়ের পদ্ধতি, আসরের হিসাব ও হিজরি সমন্বয়',
+                      style: GoogleFonts.hindSiliguri(fontSize: 12.5, color: secondary)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CalculationSettingsScreen()),
+                  ),
+                ),
+                const Divider(height: 1),
                 sw('সব নোটিফিকেশন', 'বন্ধ করলে নামাজ ও অন্যান্য সব রিমাইন্ডার বন্ধ হয়ে যাবে', _master,
                     (v) => _set('master', v, (x) => _master = x)),
                 const Divider(height: 1),
@@ -136,6 +159,33 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 const Divider(height: 1),
                 sw('সাপ্তাহিক নফল রোজার রিমাইন্ডার', 'রবি ও বুধবার রাত ৮টায় পরদিনের (সোম ও বৃহস্পতিবার) নফল রোজার স্মরণ', _sawm,
                     _master ? (v) => _set('weekly_sawm', v, (x) => _sawm = x) : null),
+                const Divider(height: 1),
+                sw('আইয়ামে বীযের রোজা', 'হিজরি ১৩, ১৪ ও ১৫ তারিখের আগের সন্ধ্যা ৮টায় স্মরণ (গাণিতিক ক্যালেন্ডার; সমন্বয় গণনা পদ্ধতি পাতায়)', _bid,
+                    _master ? (v) => _set('ayyam_bid', v, (x) => _bid = x) : null),
+                const Divider(height: 1),
+                sw('দৈনিক আয়াত ও হাদিস', 'প্রতিদিন একটি আয়াত বা হাদিস, অ্যাপে থাকা বিষয়বস্তু থেকে রেফারেন্স সহ', _daily,
+                    _master ? (v) => _set('daily_ayah', v, (x) => _daily = x) : null),
+                if (_daily && _master)
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    leading: const Icon(Icons.schedule, color: AppColors.emerald),
+                    title: Text('রিমাইন্ডারের সময়', style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w600)),
+                    trailing: Text(
+                      '${BengaliNumerals.convert((_dailyMinutes ~/ 60).toString().padLeft(2, '0'))}:${BengaliNumerals.convert((_dailyMinutes % 60).toString().padLeft(2, '0'))}',
+                      style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(hour: _dailyMinutes ~/ 60, minute: _dailyMinutes % 60),
+                      );
+                      if (picked == null) return;
+                      final m = picked.hour * 60 + picked.minute;
+                      await StorageService.setDailyReminderMinutes(m);
+                      await ReminderService.instance.rescheduleFromSaved();
+                      if (mounted) setState(() => _dailyMinutes = m);
+                    },
+                  ),
                 Padding(
                   padding: const EdgeInsets.all(20),
                   child: Text(

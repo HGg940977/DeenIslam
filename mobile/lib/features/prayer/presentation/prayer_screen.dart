@@ -13,6 +13,7 @@ import '../../../data/models/app_location.dart';
 import '../../location/city_search_screen.dart';
 import '../../settings/notification_settings_screen.dart';
 import '../../settings/prayer_alarm_settings_screen.dart';
+import '../../../data/models/calc_config.dart';
 import '../../../data/models/prayer_times_model.dart';
 
 class PrayerScreen extends StatefulWidget {
@@ -50,6 +51,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
     _location = LocationService.manual('ঢাকা');
     _prayerTimes = PrayerTimesModel.forLocation(_now, _location);
     _loadPreferences();
+    CalcConfig.revision.addListener(_onCalcChanged);
     // Recompute when the calendar day changes while the screen stays open.
     _dayTimer = Timer.periodic(const Duration(minutes: 1), (_) => _refreshIfDayChanged());
   }
@@ -57,6 +59,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   @override
   void dispose() {
     _dayTimer?.cancel();
+    CalcConfig.revision.removeListener(_onCalcChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -64,6 +67,11 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _refreshIfDayChanged();
+  }
+
+  void _onCalcChanged() {
+    if (!mounted) return;
+    setState(() => _applyLocation(_location));
   }
 
   void _refreshIfDayChanged() {

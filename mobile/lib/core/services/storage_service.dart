@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../data/models/calc_config.dart';
 
 class BookmarkItem {
   final String key;
@@ -50,6 +51,10 @@ class StorageService {
   static const String _azanAlarmsKey = 'deen_azan_alarms_v1';
   static const String _adhanSoundKey = 'deen_adhan_sound_v1';
   static const String _adhanChoiceKey = 'deen_adhan_choice_v1';
+  static const String _calcMethodKey = 'deen_calc_method_v1';
+  static const String _calcHanafiKey = 'deen_calc_hanafi_v1';
+  static const String _hijriAdjustKey = 'deen_hijri_adjust_v1';
+  static const String _dailyMinutesKey = 'deen_daily_minutes_v1';
   static const String _azanMuazzinKey = 'deen_azan_muazzin_v1';
   static const String _azanPreReminderKey = 'deen_azan_pre_reminder_v1';
   static const String _selectedCityKey = 'deen_selected_city_v1';
@@ -82,6 +87,47 @@ class StorageService {
     if (choice < 1 || choice > adhanCount) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_adhanChoiceKey, choice);
+  }
+
+  /// Loads the saved calculation settings into [CalcConfig.current].
+  static Future<CalcConfig> loadCalcConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cfg = CalcConfig(
+      method: CalcConfig.methodFromName(prefs.getString(_calcMethodKey)),
+      hanafiAsr: prefs.getBool(_calcHanafiKey) ?? CalcConfig.defaults.hanafiAsr,
+    );
+    CalcConfig.apply(cfg);
+    return cfg;
+  }
+
+  static Future<void> saveCalcConfig(CalcConfig cfg) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_calcMethodKey, cfg.method.name);
+    await prefs.setBool(_calcHanafiKey, cfg.hanafiAsr);
+    CalcConfig.apply(cfg);
+  }
+
+  /// Days added to the calculated Hijri date to follow local moon sighting
+  /// (-2..2, default 0 = pure calculation).
+  static Future<int> getHijriAdjust() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getInt(_hijriAdjustKey) ?? 0).clamp(-2, 2);
+  }
+
+  static Future<void> setHijriAdjust(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_hijriAdjustKey, days.clamp(-2, 2));
+  }
+
+  /// Time of the daily Ayah/Hadith reminder, minutes after midnight.
+  static Future<int> getDailyReminderMinutes() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getInt(_dailyMinutesKey) ?? 7 * 60).clamp(0, 1439);
+  }
+
+  static Future<void> setDailyReminderMinutes(int minutes) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_dailyMinutesKey, minutes.clamp(0, 1439));
   }
 
   static Future<bool> getDarkMode() async {

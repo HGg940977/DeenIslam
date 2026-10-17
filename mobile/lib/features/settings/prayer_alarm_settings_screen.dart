@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/services/audio_service.dart';
+import '../../data/models/calc_config.dart';
+import 'calculation_settings_screen.dart';
 import '../../core/services/reminder_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/theme/app_colors.dart';
@@ -145,10 +147,31 @@ class _PrayerAlarmSettingsScreenState extends State<PrayerAlarmSettingsScreen> w
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Text(
-                    'ওয়াক্ত শুরু হলে রিমাইন্ডার আসবে। প্রতিটি ওয়াক্ত আলাদাভাবে চালু বা বন্ধ করা যায়। সময় আপনার নির্বাচিত লোকেশন থেকে হিসাব করা।',
+                    'ওয়াক্ত শুরু হলে রিমাইন্ডার আসবে। প্রতিটি ওয়াক্ত আলাদাভাবে চালু বা বন্ধ করা যায়। সময় আপনার নির্বাচিত লোকেশন থেকে ডিভাইসে হিসাব করা।',
                     style: GoogleFonts.hindSiliguri(fontSize: 13, height: 1.5),
                   ),
                 ),
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                  leading: const Icon(Icons.calculate_outlined, color: AppColors.emerald),
+                  title: Text('গণনা পদ্ধতি', style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w600)),
+                  subtitle: Text(CalcConfig.current.label, style: GoogleFonts.hindSiliguri(fontSize: 12.5, color: secondary)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const CalculationSettingsScreen()),
+                    );
+                    if (mounted) setState(() {});
+                  },
+                ),
+                if (ReminderService.instance.lastDiagnostics.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    child: Text(
+                      'কিছু দিনের সময়সূচি যাচাইয়ে সমস্যা পাওয়া গেছে, সেই দিনের অ্যালার্ম বসানো হয়নি: ${ReminderService.instance.lastDiagnostics.take(2).join('; ')}',
+                      style: GoogleFonts.hindSiliguri(fontSize: 12, height: 1.4, color: Colors.red.shade700),
+                    ),
+                  ),
                 SwitchListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                   activeColor: AppColors.emerald,
