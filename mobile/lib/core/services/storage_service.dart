@@ -49,6 +49,7 @@ class StorageService {
   static const String _bookmarksKey = 'deen_bookmarks_v1';
   static const String _azanAlarmsKey = 'deen_azan_alarms_v1';
   static const String _adhanSoundKey = 'deen_adhan_sound_v1';
+  static const String _adhanChoiceKey = 'deen_adhan_choice_v1';
   static const String _azanMuazzinKey = 'deen_azan_muazzin_v1';
   static const String _azanPreReminderKey = 'deen_azan_pre_reminder_v1';
   static const String _selectedCityKey = 'deen_selected_city_v1';
@@ -66,6 +67,21 @@ class StorageService {
   static Future<void> setAdhanSound(bool enabled) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_adhanSoundKey, enabled);
+  }
+
+  /// Which bundled Adhan (1..adhanCount) plays at prayer time. Default 1.
+  static const int adhanCount = 3;
+
+  static Future<int> getAdhanChoice() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getInt(_adhanChoiceKey) ?? 1;
+    return (v >= 1 && v <= adhanCount) ? v : 1;
+  }
+
+  static Future<void> setAdhanChoice(int choice) async {
+    if (choice < 1 || choice > adhanCount) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_adhanChoiceKey, choice);
   }
 
   static Future<bool> getDarkMode() async {

@@ -21,6 +21,7 @@ class _PrayerAlarmSettingsScreenState extends State<PrayerAlarmSettingsScreen> w
   int _preMinutes = 15;
   bool _adhanFile = false;
   bool _adhanOn = true;
+  int _adhanChoice = 1;
   bool _notif = false;
   bool _exact = false;
   bool _loaded = false;
@@ -50,6 +51,7 @@ class _PrayerAlarmSettingsScreenState extends State<PrayerAlarmSettingsScreen> w
     final pre = await StorageService.getAzanPreReminderMinutes();
     final file = await ReminderService.instance.adhanAvailable();
     final on = await StorageService.getAdhanSound();
+    final choice = await StorageService.getAdhanChoice();
     final notif = await ReminderService.instance.notificationsAllowed();
     final exact = await ReminderService.instance.canScheduleExact();
     if (reschedule) await ReminderService.instance.rescheduleFromSaved();
@@ -59,6 +61,7 @@ class _PrayerAlarmSettingsScreenState extends State<PrayerAlarmSettingsScreen> w
       _preMinutes = pre;
       _adhanFile = file;
       _adhanOn = on;
+      _adhanChoice = choice;
       _notif = notif;
       _exact = exact;
       _loaded = true;
@@ -217,14 +220,48 @@ class _PrayerAlarmSettingsScreenState extends State<PrayerAlarmSettingsScreen> w
                       style: GoogleFonts.hindSiliguri(fontSize: 12.5, height: 1.5, color: secondary),
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                  child: OutlinedButton.icon(
-                    onPressed: () => AudioService.instance.playUrl('https://www.islamcan.com/audio/adhan/azan1.mp3'),
-                    icon: const Icon(Icons.volume_up_outlined),
-                    label: Text('আজানের নমুনা শুনুন (ইন্টারনেট লাগবে)', style: GoogleFonts.hindSiliguri()),
+                if (_adhanFile) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+                    child: Text('আজান বাছাই করুন', style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.bold, color: secondary)),
                   ),
-                ),
+                  for (var i = 1; i <= StorageService.adhanCount; i++)
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      leading: Icon(
+                        _adhanChoice == i ? Icons.radio_button_checked : Icons.radio_button_off,
+                        color: _adhanChoice == i ? AppColors.emerald : secondary,
+                      ),
+                      title: Text(ReminderService.adhanLabel(i), style: GoogleFonts.hindSiliguri(fontWeight: FontWeight.w600)),
+                      trailing: AnimatedBuilder(
+                        animation: AudioService.instance,
+                        builder: (_, __) {
+                          final playing = AudioService.instance.currentUrl == 'raw:${ReminderService.adhanRawName(i)}' &&
+                              (AudioService.instance.isPlaying || AudioService.instance.isLoading);
+                          return IconButton(
+                            tooltip: playing ? 'থামান' : 'নমুনা শুনুন',
+                            icon: Icon(playing ? Icons.stop_circle_outlined : Icons.play_circle_outline, color: AppColors.emerald, size: 30),
+                            onPressed: () => playing
+                                ? AudioService.instance.stop()
+                                : AudioService.instance.playRaw(ReminderService.adhanRawName(i)),
+                          );
+                        },
+                      ),
+                      onTap: () async {
+                        await StorageService.setAdhanChoice(i);
+                        await ReminderService.instance.rescheduleFromSaved();
+                        await _load();
+                      },
+                    ),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: OutlinedButton.icon(
+                      onPressed: () => AudioService.instance.playUrl('https://www.islamcan.com/audio/adhan/azan1.mp3'),
+                      icon: const Icon(Icons.volume_up_outlined),
+                      label: Text('আজানের নমুনা শুনুন (ইন্টারনেট লাগবে)', style: GoogleFonts.hindSiliguri()),
+                    ),
+                  ),
                 const Divider(height: 32),
                 ListTile(
                   leading: Icon(_notif ? Icons.check_circle : Icons.error_outline, color: _notif ? AppColors.emerald : Colors.red.shade700),

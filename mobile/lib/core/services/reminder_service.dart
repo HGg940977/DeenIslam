@@ -40,20 +40,24 @@ class ReminderResult {
 /// cannot accumulate. The app reschedules on start/resume, which also covers
 /// date and time-zone changes.
 ///
-/// Sound: the reminders use the system's default notification sound. No Adhan
-/// audio file is bundled, so full Adhan playback is NOT implemented here.
+/// Sound: when the bundled Adhan files (res/raw/adhan_1..3) are present and the
+/// user keeps "full Adhan" on, the prayer-start notification plays the chosen
+/// Adhan through its own channel; otherwise the system default sound is used.
+/// Pre-reminders always use the default sound.
 class ReminderService {
   ReminderService._();
   static final ReminderService instance = ReminderService._();
 
   static const int horizonDays = 7;
   static const String _channelId = 'prayer_reminders';
-  static const String _adhanChannelId = 'prayer_adhan_v1';
+  static String adhanChannelId(int choice) => 'prayer_adhan_${choice}_v1';
+  static String adhanRawName(int choice) => 'adhan_$choice';
+  static String adhanLabel(int choice) => 'আজান $choice';
   static const MethodChannel _native = MethodChannel('com.mehedishakeel.deenislam/audio');
   bool? _adhanAvailable;
 
-  /// True only when an Adhan audio file was added to the Android build as
-  /// `res/raw/adhan.*`. Nothing is bundled by default (no licensed audio).
+  /// True only when the Adhan files are part of the Android build
+  /// (`res/raw/adhan_1.*` ...).
   Future<bool> adhanAvailable() async {
     if (_adhanAvailable != null) return _adhanAvailable!;
     try {
@@ -100,19 +104,22 @@ class ReminderService {
       ),
     );
     if (await adhanAvailable()) {
-      // The channel's sound is played by Android itself when the alarm fires,
+      // Each channel's sound is played by Android itself when the alarm fires,
       // so it works with the app closed. It follows the phone's volume and
-      // silent / Do-Not-Disturb rules (usage = notification).
-      await android?.createNotificationChannel(
-        const AndroidNotificationChannel(
-          _adhanChannelId,
-          'আজান (ওয়াক্ত শুরু)',
-          description: 'ওয়াক্ত শুরু হলে আজানের শব্দ',
-          importance: Importance.max,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('adhan'),
-        ),
-      );
+      // silent / Do-Not-Disturb rules. A channel's sound cannot change after
+      // creation, hence one channel per Adhan.
+      for (var i = 1; i <= StorageService.adhanCount; i++) {
+        await android?.createNotificationChannel(
+          AndroidNotificationChannel(
+            adhanChannelId(i),
+            '${adhanLabel(i)} (ওয়াক্ত শুরু)',
+            description: 'ওয়াক্ত শুরু হলে আজানের শব্দ',
+            importance: Importance.max,
+            playSound: true,
+            sound: RawResourceAndroidNotificationSound(adhanRawName(i)),
+          ),
+        );
+      }
     }
     _initialized = true;
   }
@@ -195,16 +202,17 @@ class ReminderService {
         ),
       );
       final useAdhan = await adhanAvailable() && await StorageService.getAdhanSound();
-      const adhanDetails = NotificationDetails(
+      final adhanChoice = await StorageService.getAdhanChoice();
+      final adhanDetails = NotificationDetails(
         android: AndroidNotificationDetails(
-          _adhanChannelId,
-          'আজান (ওয়াক্ত শুরু)',
+          adhanChannelId(adhanChoice),
+          '${adhanLabel(adhanChoice)} (ওয়াক্ত শুরু)',
           channelDescription: 'ওয়াক্ত শুরু হলে আজানের শব্দ',
           importance: Importance.max,
           priority: Priority.high,
           category: AndroidNotificationCategory.reminder,
           playSound: true,
-          sound: RawResourceAndroidNotificationSound('adhan'),
+          sound: RawResourceAndroidNotificationSound(adhanRawName(adhanChoice)),
         ),
       );
 
