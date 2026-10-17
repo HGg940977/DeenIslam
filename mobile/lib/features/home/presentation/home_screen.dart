@@ -69,8 +69,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         setState(() {
           final next = DateTime.now();
           // Recalculate when the calendar day changes (e.g. after midnight).
-          if (!_prayerTimes.isSameDay(next)) {
-            _prayerTimes = PrayerTimesModel.forLocation(next, _location);
+          final today = PrayerTimesModel.placeToday(next, _location);
+          if (!_prayerTimes.isSameDay(today)) {
+            _prayerTimes = PrayerTimesModel.forLocation(today, _location);
           }
           _now = next;
         });
@@ -123,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     if (!mounted) return;
     setState(() {
       _location = loc;
-      _prayerTimes = PrayerTimesModel.forLocation(_now, loc);
+      _prayerTimes = PrayerTimesModel.forLocation(PrayerTimesModel.placeToday(_now, loc), loc);
     });
   }
 
@@ -141,8 +142,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final prayerStatus = _prayerTimes.getUpcomingStatus(_now);
-    final fastingStatus = _prayerTimes.getFastingStatus(_now);
+    final prayerStatus = _prayerTimes.getUpcomingStatus(_prayerTimes.wallNow(_now));
+    final fastingStatus = _prayerTimes.getFastingStatus(_prayerTimes.wallNow(_now));
     final isDark = widget.isDark;
 
     return Scaffold(

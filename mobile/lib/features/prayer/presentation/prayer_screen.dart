@@ -10,6 +10,9 @@ import '../../../core/services/storage_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/bengali_numerals.dart';
 import '../../../data/models/app_location.dart';
+import '../../location/city_search_screen.dart';
+import '../../settings/notification_settings_screen.dart';
+import '../../settings/prayer_alarm_settings_screen.dart';
 import '../../../data/models/prayer_times_model.dart';
 
 class PrayerScreen extends StatefulWidget {
@@ -66,10 +69,11 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   void _refreshIfDayChanged() {
     final now = DateTime.now();
     if (!mounted) return;
-    if (now.year != _now.year || now.month != _now.month || now.day != _now.day) {
+    final today = PrayerTimesModel.placeToday(now, _location);
+    if (!_prayerTimes.isSameDay(today)) {
       setState(() {
         _now = now;
-        _prayerTimes = PrayerTimesModel.forLocation(now, _location);
+        _prayerTimes = PrayerTimesModel.forLocation(today, _location);
       });
     }
   }
@@ -77,7 +81,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   void _applyLocation(AppLocation loc) {
     _now = DateTime.now();
     _location = loc;
-    _prayerTimes = PrayerTimesModel.forLocation(_now, loc);
+    _prayerTimes = PrayerTimesModel.forLocation(PrayerTimesModel.placeToday(_now, loc), loc);
   }
 
   Future<void> _loadPreferences() async {
@@ -199,6 +203,25 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
   }
 
   void _showAzanSettingsSheet(bool isDark) {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const PrayerAlarmSettingsScreen()))
+        .then((_) => _loadPreferences());
+  }
+
+  Future<void> _openCitySearch() async {
+    final loc = await Navigator.of(context).push<AppLocation>(
+      MaterialPageRoute(builder: (_) => const CitySearchScreen()),
+    );
+    if (loc == null || !mounted) return;
+    setState(() => _applyLocation(loc));
+    final r = await _reschedule();
+    if (!r.ok && r.status == ReminderStatus.failed) {
+      _toast('রিমাইন্ডার আপডেট করা যায়নি', error: true);
+    }
+  }
+
+  // ignore: unused_element
+  void _legacyAzanSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -505,6 +528,12 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
         ),
         actions: [
           IconButton(
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const NotificationSettingsScreen())),
+            tooltip: 'নোটিফিকেশন সেটিংস',
+            icon: const Icon(Icons.notifications_none_rounded, color: AppColors.emerald),
+          ),
+          IconButton(
             onPressed: () => _showAzanSettingsSheet(isDark),
             tooltip: 'আজান সেটিংস',
             icon: const Icon(Icons.tune_rounded, color: AppColors.emerald),
@@ -536,7 +565,7 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
                         child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           isExpanded: true,
-                          value: _location.isGps ? null : _location.label,
+                          value: (!_location.isGps && _cities.contains(_location.label)) ? _location.label : null,
                           hint: Text(
                             _location.label,
                             overflow: TextOverflow.ellipsis,
@@ -567,6 +596,11 @@ class _PrayerScreenState extends State<PrayerScreen> with WidgetsBindingObserver
                       ),
                     ],
                   ),
+                  ),
+                  IconButton(
+                    onPressed: _openCitySearch,
+                    tooltip: 'বিশ্বের যেকোনো শহর খুঁজুন',
+                    icon: const Icon(Icons.travel_explore, color: AppColors.emerald, size: 20),
                   ),
                   IconButton(
                     onPressed: _detecting ? null : _detectLocation,

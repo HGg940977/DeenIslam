@@ -44,7 +44,7 @@ class _RamadanScreenState extends State<RamadanScreen> {
     if (!mounted) return;
     setState(() {
       _location = loc;
-      _prayerTimes = PrayerTimesModel.forLocation(DateTime.now(), loc);
+      _prayerTimes = PrayerTimesModel.forLocation(PrayerTimesModel.placeToday(DateTime.now(), loc), loc);
       _completedRozaDays
         ..clear()
         ..addAll(rozaDays);

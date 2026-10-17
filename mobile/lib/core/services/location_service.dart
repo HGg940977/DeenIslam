@@ -77,6 +77,20 @@ class LocationService {
         );
       }
     }
+    final place = await StorageService.getManualPlace();
+    if (place != null) {
+      final lat = (place['lat'] as num?)?.toDouble();
+      final lon = (place['lon'] as num?)?.toDouble();
+      if (lat != null && lon != null && PrayerService.isValidCoordinate(lat, lon)) {
+        return AppLocation(
+          latitude: lat,
+          longitude: lon,
+          label: (place['label'] as String?) ?? 'নির্বাচিত স্থান',
+          isGps: false,
+          timezone: place['tz'] as String?,
+        );
+      }
+    }
     final city = await StorageService.getSelectedCity();
     return manual(city);
   }
@@ -95,7 +109,36 @@ class LocationService {
   static Future<AppLocation> selectManual(String city) async {
     await StorageService.setSelectedCity(city);
     await StorageService.clearGpsLocation();
+    await StorageService.clearManualPlace();
     return manual(city);
+  }
+
+  /// Saves a place found through worldwide search (real coordinates and time
+  /// zone) as the active manual location. It is never overwritten by an
+  /// automatic refresh; only an explicit GPS action replaces it.
+  static Future<AppLocation> selectPlace({
+    required double latitude,
+    required double longitude,
+    required String label,
+    String? timezone,
+  }) async {
+    if (!PrayerService.isValidCoordinate(latitude, longitude)) {
+      throw ArgumentError('Invalid coordinates');
+    }
+    await StorageService.setManualPlace(
+      latitude: latitude,
+      longitude: longitude,
+      label: label,
+      timezone: timezone,
+    );
+    await StorageService.clearGpsLocation();
+    return AppLocation(
+      latitude: latitude,
+      longitude: longitude,
+      label: label,
+      isGps: false,
+      timezone: timezone,
+    );
   }
 
   /// Whether the saved GPS fix should be refreshed on startup.
@@ -147,6 +190,8 @@ class LocationService {
 
       final label = _labelFor(position.latitude, position.longitude);
       final now = DateTime.now();
+      // A deliberate switch to automatic location replaces a manual place.
+      await StorageService.clearManualPlace();
       await StorageService.setGpsLocation(
         latitude: position.latitude,
         longitude: position.longitude,

@@ -401,4 +401,59 @@ class StorageService {
       await prefs.setInt(_quizHighScoreKey, score);
     }
   }
+
+  // --- Manually selected worldwide place (coordinates + time zone) ---
+  static const String _manualPlaceKey = 'deen_manual_place_v1';
+  static const String _onboardedKey = 'deen_onboarded_v1';
+
+  static Future<Map<String, dynamic>?> getManualPlace() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_manualPlaceKey);
+    if (raw == null) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setManualPlace({
+    required double latitude,
+    required double longitude,
+    required String label,
+    String? timezone,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _manualPlaceKey,
+      jsonEncode({'lat': latitude, 'lon': longitude, 'label': label, 'tz': timezone}),
+    );
+  }
+
+  static Future<void> clearManualPlace() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_manualPlaceKey);
+  }
+
+  static Future<bool> getOnboarded() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_onboardedKey) ?? false;
+  }
+
+  static Future<void> setOnboarded(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_onboardedKey, value);
+  }
+
+  // --- Notification preferences (master / Friday / weekly fasting) ---
+  static Future<bool> getNotifPref(String key, {bool defaultValue = true}) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('deen_notif_$key') ?? defaultValue;
+  }
+
+  static Future<void> setNotifPref(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('deen_notif_$key', value);
+  }
 }

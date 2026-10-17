@@ -6,6 +6,7 @@ import 'core/services/audio_service.dart';
 import 'core/services/location_service.dart';
 import 'core/services/reminder_service.dart';
 import 'core/services/storage_service.dart';
+import 'features/location/onboarding_screen.dart';
 import 'core/theme/app_theme.dart';
 import 'data/models/prayer_times_model.dart';
 import 'features/dua/presentation/dua_screen.dart';
@@ -34,11 +35,15 @@ class DeenIslamApp extends StatefulWidget {
 
 class _DeenIslamAppState extends State<DeenIslamApp> with WidgetsBindingObserver {
   ThemeMode _themeMode = ThemeMode.light;
+  bool? _onboarded; // null while the saved flag loads
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    StorageService.getOnboarded().then((v) {
+      if (mounted) setState(() => _onboarded = v);
+    });
     _loadSavedTheme();
     // Non-blocking: never delays first frame or prompts for permissions.
     _syncReminders();
@@ -98,10 +103,19 @@ class _DeenIslamAppState extends State<DeenIslamApp> with WidgetsBindingObserver
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
-      home: MainNavigationScaffold(
-        onToggleTheme: _toggleTheme,
-        isDark: _themeMode == ThemeMode.dark,
-      ),
+      home: _onboarded == null
+          ? const Scaffold(body: SizedBox.shrink())
+          : (_onboarded!
+              ? MainNavigationScaffold(
+                  onToggleTheme: _toggleTheme,
+                  isDark: _themeMode == ThemeMode.dark,
+                )
+              : LocationOnboardingScreen(
+                  onDone: (_) {
+                    setState(() => _onboarded = true);
+                    _syncReminders();
+                  },
+                )),
     );
   }
 }

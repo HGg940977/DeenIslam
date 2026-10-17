@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../data/models/app_location.dart';
 import '../../data/models/prayer_times_model.dart';
+import 'location_service.dart';
 import 'storage_service.dart';
 
 enum ReminderStatus {
@@ -147,6 +148,10 @@ class ReminderService {
     await _android?.requestExactAlarmsPermission();
   }
 
+  /// Reschedules using the saved location (used by settings screens).
+  Future<ReminderResult> rescheduleFromSaved() async =>
+      reschedule(await LocationService.load());
+
   /// Replaces every scheduled reminder using the current location and the
   /// user's per-prayer preferences. Never throws.
   Future<ReminderResult> reschedule(AppLocation location) async {
@@ -154,13 +159,20 @@ class ReminderService {
       await init();
       await _plugin.cancelAll();
 
+      // Master switch: everything off, nothing pending.
+      if (!await StorageService.getNotifPref('master')) {
+        return const ReminderResult(ReminderStatus.nothingEnabled);
+      }
+      final fridayOn = await StorageService.getNotifPref('friday');
+      final sawmOn = await StorageService.getNotifPref('weekly_sawm');
+
       final alarms = await StorageService.getAzanAlarms();
       final preMinutes = await StorageService.getAzanPreReminderMinutes();
       final enabled = <int>[
         for (var i = 0; i < waqtKeys.length; i++)
           if (alarms[waqtKeys[i]] ?? true) i,
       ];
-      if (enabled.isEmpty) {
+      if (enabled.isEmpty && !fridayOn && !sawmOn) {
         return const ReminderResult(ReminderStatus.nothingEnabled);
       }
       if (!await notificationsAllowed()) {
@@ -196,11 +208,49 @@ class ReminderService {
         ),
       );
 
+      const generalDetails = NotificationDetails(
+        android: AndroidNotificationDetails(
+          'general_reminders',
+          'সাধারণ ইসলামিক রিমাইন্ডার',
+          channelDescription: 'জুমা ও সাপ্তাহিক নফল রোজার স্মরণ',
+          importance: Importance.defaultImportance,
+          priority: Priority.defaultPriority,
+          category: AndroidNotificationCategory.reminder,
+        ),
+      );
+
       final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
+      final today = PrayerTimesModel.placeToday(now, location);
+      final deviceToday = DateTime(now.year, now.month, now.day);
       var count = 0;
 
       for (var d = 0; d < horizonDays; d++) {
+        // Weekly reminders use the phone's own calendar and clock.
+        final devDay = deviceToday.add(Duration(days: d));
+        Future<void> weekly(int kind, int hour, String title, String body) async {
+          final at = DateTime(devDay.year, devDay.month, devDay.day, hour);
+          if (!at.isAfter(now)) return;
+          await _schedule(
+            id: 8000 + d * 10 + kind,
+            title: title,
+            body: body,
+            at: at,
+            details: generalDetails,
+            mode: mode,
+          );
+          count++;
+        }
+
+        if (fridayOn && devDay.weekday == DateTime.friday) {
+          await weekly(1, 10, 'আজ জুমার দিন', 'সূরা আল-কাহফ তিলাওয়াত ও জুমার প্রস্তুতির কথা স্মরণ করানো হচ্ছে।');
+        }
+        if (sawmOn && devDay.weekday == DateTime.sunday) {
+          await weekly(2, 20, 'আগামীকাল সোমবার', 'নফল রোজা রাখতে চাইলে সেহরির প্রস্তুতি ও নিয়ত করতে পারেন।');
+        }
+        if (sawmOn && devDay.weekday == DateTime.wednesday) {
+          await weekly(3, 20, 'আগামীকাল বৃহস্পতিবার', 'নফল রোজা রাখতে চাইলে সেহরির প্রস্তুতি ও নিয়ত করতে পারেন।');
+        }
+
         final day = today.add(Duration(days: d));
         final model = PrayerTimesModel.forLocation(day, location);
         final times = [model.fajr, model.dhuhr, model.asr, model.maghrib, model.isha];

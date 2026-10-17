@@ -47,6 +47,15 @@ class PrayerTimesModel {
     return PrayerTimesModel.forCoordinates(date, c[0], c[1]);
   }
 
+  /// Calendar day at [location] right now (differs from the device day when a
+  /// place in another time zone was chosen).
+  static DateTime placeToday(DateTime now, AppLocation location) {
+    final off = TimeZoneService.offsetFor(location.timezone, now);
+    if (off == null) return DateTime(now.year, now.month, now.day);
+    final u = now.toUtc().add(off);
+    return DateTime(u.year, u.month, u.day);
+  }
+
   /// Prayer times for the app's current location (GPS or manual).
   factory PrayerTimesModel.forLocation(DateTime date, AppLocation location) {
     return PrayerTimesModel.forCoordinates(
@@ -76,6 +85,10 @@ class PrayerTimesModel {
     }
     final params = adhan.CalculationMethodParameters.karachi();
     params.madhab = adhan.Madhab.hanafi;
+    // Above ~48 degrees the 18-degree twilight may never occur in summer.
+    if (latitude.abs() > 48) {
+      params.highLatitudeRule = adhan.HighLatitudeRule.twilightAngle;
+    }
 
     final times = adhan.PrayerTimes(
       coordinates: adhan.Coordinates(latitude, longitude),
